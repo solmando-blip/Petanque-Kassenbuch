@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pétanque Kassenbuch - Master Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+        body { background-color: #f4f6f9; color: #333; margin: 0; padding: 15px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        header {
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 15px;
+            border-radius: 8px; margin-bottom: 15px; position: relative;
+        }
+        header h1 { margin: 0; font-size: 20px; padding-right: 120px; }
+        header p { margin: 5px 0 0 0; opacity: 0.9; font-size: 12px; }
+
+        .help-trigger {
+            position: absolute; right: 15px; top: 15px; background: #f59e0b; color: white;
+            border: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px;
+        }
+
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 15px;
+        }
+        .stat-card {
+            background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 5px solid #ccc;
+        }
+        .stat-card.balance { border-left-color: #10b981; }
+        .stat-card.bank { border-left-color: #3b82f6; }
+        .stat-card.wirtschaft { border-left-color: #f59e0b; }
+        .stat-card.zweck { border-left-color: #8b5cf6; }
+        .stat-label { font-size: 11px; text-transform: uppercase; color: #6b7280; font-weight: 600; }
+        .stat-value { font-size: 18px; font-weight: bold; margin-top: 3px; }
+
+        .main-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        @media(min-width: 768px) { .main-grid { grid-template-columns: 35% 65%; } }
+
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .card h2 { margin-top: 0; font-size: 15px; border-bottom: 2px solid #f3f4f6; padding-bottom: 8px; color: #1f2937; display: flex; justify-content: space-between; align-items: center; }
+
+        /* Schnellwahltasten */
+        .quick-btn-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 12px; }
+        .btn-quick { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 6px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%; }
+        .btn-quick:hover { background-color: #bae6fd; }
+
+        .form-group { margin-bottom: 10px; }
+        label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 3px; color: #4b5563; }
+        input, select { width: 100%; padding: 7px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; }
+
+        .calc-box { background-color: #eff6ff; border: 1px dashed #bfdbfe; padding: 10px; border-radius: 6px; margin-bottom: 10px; }
+        .calc-box h4 { margin: 0 0 8px 0; font-size: 12px; color: #1e40af; }
+        .denom-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; font-size: 11px; margin-bottom: 8px; }
+        .denom-item label { font-size: 10px; margin-bottom: 1px; }
+        .denom-item input { padding: 4px; text-align: center; font-size: 12px; }
+
+        button { width: 100%; padding: 9px; background-color: #2563eb; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .btn-secondary { background-color: #4b5563; margin-top: 6px; }
+        .btn-print { background-color: #10b981; margin-top: 6px; }
+        .btn-warning { background-color: #d97706; margin-top: 6px; }
+        .btn-purple { background-color: #7c3aed; margin-top: 6px; }
+        .btn-lock { background-color: #0f172a; margin-top: 6px; }
+
+        .btn-action { padding: 3px 6px; border-radius: 3px; font-size: 10px; cursor: pointer; border: none; color: white; margin-right: 2px; width: auto; }
+        .btn-edit { background-color: #3b82f6; }
+        .btn-delete { background-color: #ef4444; }
+        .btn-receipt { background-color: #8b5cf6; }
+
+        .alert { padding: 10px; background-color: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; border-radius: 4px; font-size: 12px; margin-bottom: 10px; display: none; }
+        .backup-info { font-size: 11px; color: #059669; margin-top: 6px; font-weight: bold; display: none; }
+        .info-line { font-size: 11px; color: #6b7280; margin-top: 6px; }
+
+        .filter-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 600px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background-color: #f8fafc; color: #475569; }
+        .text-right { text-align: right; }
+
+        .badge { padding: 2px 5px; border-radius: 4px; font-size: 10px; font-weight: bold; display: inline-block; }
+        .badge-ideell { background-color: #e0f2fe; color: #0369a1; }
+        .badge-zweck { background-color: #dbeafe; color: #1d4ed8; }
+        .badge-wirtschaft { background-color: #fef3c7; color: #b45309; }
+        .tag-zb { background-color: #f3e8ff; color: #6b21a8; font-size: 9px; padding: 1px 3px; border-radius: 3px; margin-left: 3px; font-weight: bold;}
+
+        .checklist-item { display: flex; align-items: center; font-size: 12px; margin-bottom: 6px; }
+        .checklist-item input { width: auto; margin-right: 8px; }
+        .checklist-item.done span { text-decoration: line-through; color: #9ca3af; }
+
+        .print-only-section { display: none; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; padding: 10px; }
+        .modal-content { background: white; max-width: 700px; margin: 20px auto; border-radius: 8px; padding: 15px; height: 85vh; display: flex; flex-direction: column; }
+        .modal-content.wide { max-width: 900px; }
+        .modal-body { overflow-y: auto; flex-grow: 1; margin-top: 10px; font-size: 13px; line-height: 1.5; }
+        .close-btn { background: #ef4444; color: white; padding: 5px 10px; border: none; border-radius: 4px; float: right; cursor: pointer; }
+        .search-box { width: 100%; padding: 8px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+        .help-toc ul { padding-left: 20px; }
+        .help-toc a { color: #2563eb; text-decoration: none; }
+        .help-section { border-bottom: 1px solid #eee; padding: 10px 0; }
+
+        @media print {
+            body { background: white; padding: 0; }
+            header, .form-column, button, .btn-secondary, .btn-print, .btn-warning, .btn-purple, .btn-lock, .calc-box, #bookingForm, .help-trigger, .filter-bar, .btn-action, .checklist-card, .quick-btn-grid, .card h2 span, #vereinsdatenCard { display: none !important; }
+            .main-grid { grid-template-columns: 1fr !important; }
+            .card { box-shadow: none; padding: 0; margin: 0; }
+            table { font-size: 10px; }
+            tr { page-break-inside: avoid; }
+            .print-only-section { display: block !important; margin-top: 20px; font-size: 11px; }
+            .print-balance-box { border: 1px solid #333; padding: 10px; margin-bottom: 15px; border-radius: 4px; }
+            .signature-box { display: flex; justify-content: space-between; margin-top: 40px; page-break-inside: avoid; }
+            .sig-line { border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Pétanque Kassenbuch — Master Pro</h1>
+        <p>Inkl. Schnellwahltasten, Jahresabschluss & Kassenprüfer-Signatur</p>
+        <button class="help-trigger" onclick="openHelp()">❓ Hilfe & Anleitung</button>
+    </header>
+
+    <div class="stats-grid">
+        <div class="stat-card balance">
+            <div class="stat-label">Kassenbestand (Bar)</div>
+            <div class="stat-value" id="totalBalance">150,00 €</div>
+        </div>
+        <div class="stat-card bank">
+            <div class="stat-label">Bankkonto (Giro)</div>
+            <div class="stat-value" id="bankBalance">0,00 €</div>
+        </div>
+        <div class="stat-card wirtschaft">
+            <div class="stat-label">Wirtschaftlicher Betrieb</div>
+            <div class="stat-value" id="wirtschaftNetto">0,00 €</div>
+        </div>
+        <div class="stat-card zweck">
+            <div class="stat-label">Zweckgebunden (Offen)</div>
+            <div class="stat-value" id="restrictedOpen">0,00 €</div>
+        </div>
+    </div>
+
+    <div class="main-grid">
+        <div class="form-column">
+            <div class="card">
+                <h2 id="formTitle">Buchung erfassen</h2>
+                <div class="alert" id="errorAlert">Kassenbestand darf nicht negativ werden!</div>
+                <div class="alert" id="validationAlert">Bitte einen Betrag größer als 0 eingeben.</div>
+                <div class="backup-info" id="backupAlert">🛡️ Automatisches Backup & Monatssicherung erzeugt!</div>
+
+                <label>⚡ Schnellwahl (Turnier / Bar)</label>
+                <div class="quick-btn-grid">
+                    <button type="button" class="btn-quick" onclick="quickFill('ein_turnier', 'Startgeld Turnier', 10.00)">+ 10 € Startgeld</button>
+                    <button type="button" class="btn-quick" onclick="quickFill('ein_getraenke', 'Getränkeverkauf Stand', 50.00)">+ 50 € Getränke</button>
+                    <button type="button" class="btn-quick" onclick="quickFill('ein_sponsoring_spende', 'Spende', 20.00)">+ 20 € Spende</button>
+                    <button type="button" class="btn-quick" onclick="quickFill('aus_getraenke', 'Einkauf Getränke Metro', 45.00)">- 45 € Getränke-Einkauf</button>
+                </div>
+
+                <form id="bookingForm" onsubmit="handleFormSubmit(event)">
+                    <input type="hidden" id="editId" value="">
+
+                    <div class="form-group">
+                        <label for="accountType">Zahlungsweg / Konto</label>
+                        <select id="accountType" required>
+                            <option value="bar">💵 Barkasse (Kasse vor Ort)</option>
+                            <option value="bank">🏦 Bankkonto / Girokonto</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="date">Datum</label>
+                        <input type="date" id="date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="category">Kategorie</label>
+                        <select id="category" onchange="toggleFormFields()" required>
+                            <option value="">-- Wählen --</option>
+                            <optgroup label="➕ Einnahmen">
+                                <option value="ein_getraenke">Getränkeverkauf (Wirtschaft)</option>
+                                <option value="ein_speisen">Speisen- & Essensverkauf (Wirtschaft)</option>
+                                <option value="ein_tombola">Tombola / Glücksrad / Feste (Wirtschaft)</option>
+                                <option value="ein_turnier">Startgelder Turniere (Zweckbetrieb)</option>
+                                <option value="ein_liga">Startgelder Liga / Spielbetrieb (Zweckbetrieb)</option>
+                                <option value="ein_sponsoring_werbung">Sponsoring mit Werbung (Wirtschaft)</option>
+                                <option value="ein_sponsoring_bandenwerbung">Bande- & Platzwerbung (Wirtschaft)</option>
+                                <option value="ein_sponsoring_spende">Spenden ohne Werbung (Ideell)</option>
+                                <option value="ein_zuschuss">Zuschüsse / Spartenbeitrag (Ideell)</option>
+                            </optgroup>
+                            <optgroup label="➖ Ausgaben">
+                                <option value="aus_getraenke">Einkauf Getränke/Ware (Wirtschaft)</option>
+                                <option value="aus_speisen">Einkauf Speisen / Verpflegung (Wirtschaft)</option>
+                                <option value="aus_turnier">Einkauf Turniere / Preise (Zweckbetrieb)</option>
+                                <option value="aus_pokale">Pokale, Medaillen & Preise (Zweckbetrieb)</option>
+                                <option value="aus_liga_gebuehr">Startgelder Liga extern (Zweckbetrieb)</option>
+                                <option value="aus_trainer">Trainer-Gehalt / Übungsleiter (Zweckbetrieb)</option>
+                                <option value="aus_verband">Verband / Lizenzen / Schiedsrichter (Zweckbetrieb)</option>
+                                <option value="aus_fahrtkosten">Fahrtkosten / Spesen (Zweckbetrieb)</option>
+                                <option value="aus_reparatur">Baumaßnahmen / Platzreparatur (Zweckbetrieb)</option>
+                                <option value="aus_miete">Hallenmiete / Platzmiete (Zweckbetrieb)</option>
+                                <option value="aus_inventar">Anschaffung Inventar (Zweckbetrieb)</option>
+                                <option value="aus_versicherung">Versicherung & GEMA (Ideell)</option>
+                                <option value="aus_verwaltung">Verwaltung / Büro / Präsente (Ideell)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div class="calc-box" id="beverageCalc" style="display: none;">
+                        <h4>🧮 Kassensturz-Stückelung</h4>
+                        <div class="denom-grid">
+                            <div class="denom-item"><label>50 €</label><input type="number" min="0" value="0" id="d50" oninput="calcDenominations()"></div>
+                            <div class="denom-item"><label>20 €</label><input type="number" min="0" value="0" id="d20" oninput="calcDenominations()"></div>
+                            <div class="denom-item"><label>10 €</label><input type="number" min="0" value="0" id="d10" oninput="calcDenominations()"></div>
+                            <div class="denom-item"><label>5 €</label><input type="number" min="0" value="0" id="d5" oninput="calcDenominations()"></div>
+                            <div class="denom-item"><label>2 €</label><input type="number" min="0" value="0" id="d2" oninput="calcDenominations()"></div>
+                            <div class="denom-item"><label>1 €</label><input type="number" min="0" value="0" id="d1" oninput="calcDenominations()"></div>
+                            <div class="denom-item"><label>0,50 €</label><input type="number" min="0" value="0" id="d050" oninput="calcDenominations()"></div>
+                            <div class="denom-item"><label>0,20 €</label><input type="number" min="0" value="0" id="d020" oninput="calcDenominations()"></div>
+                            <div class="denom-item"><label>0,10 €</label><input type="number" min="0" value="0" id="d010" oninput="calcDenominations()"></div>
+                        </div>
+                        <div class="form-group" style="margin-bottom:4px;"><label>Gezähltes Geld total (€): <span id="countedTotal" style="font-weight:bold; color:#1e40af;">0,00 €</span></label></div>
+                        <div class="form-group"><label>Minus Wechselgeld (€)</label><input type="number" step="0.01" id="calcStart" value="50.00" oninput="calcDenominations()"></div>
+                    </div>
+
+                    <div class="form-group" id="purposeGroup" style="display: none;">
+                        <label style="color:#6b21a8;"><input type="checkbox" id="isRestricted"> <span id="purposeLabelText">Diese Einnahme ist zweckgebunden</span></label>
+                    </div>
+
+                    <div class="form-group" id="donorGroup" style="display: none;">
+                        <label for="donorName">Name des Spenders (für Spendenquittung)</label>
+                        <input type="text" id="donorName" maxlength="150">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Verwendungszweck</label>
+                        <input type="text" id="description" required maxlength="200">
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">Betrag (€)</label>
+                        <input type="number" step="0.01" min="0.01" id="amount" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="receiptFile">📎 Beleg / Foto anhängen (optional)</label>
+                        <input type="file" id="receiptFile" accept="image/*,.pdf">
+                    </div>
+
+                    <button type="submit" id="submitBtn">Speichern</button>
+                    <button type="button" id="cancelEditBtn" class="btn-secondary" style="display:none;" onclick="cancelEdit()">Abbrechen</button>
+                </form>
+
+                <button class="btn-print" onclick="window.print()">🖨️ Kassenbericht & Jahresabschluss drucken</button>
+                <button class="btn-lock" onclick="lockAllBookings()">🔒 Buchungen festschreiben (GoBD)</button>
+                <div class="info-line" id="lockInfo"></div>
+                <button class="btn-secondary" onclick="exportToCSV()">💾 Als CSV sichern</button>
+                <button class="btn-warning" onclick="document.getElementById('importFile').click()">📂 Backup einspielen</button>
+                <input type="file" id="importFile" style="display: none;" accept=".json,.csv" onchange="importData(event)">
+                <button class="btn-purple" onclick="document.getElementById('bankImportFile').click()">🏦 Bankauszug importieren (CSV)</button>
+                <input type="file" id="bankImportFile" style="display: none;" accept=".csv,.txt" onchange="handleBankCSV(event)">
+            </div>
+
+            <div class="card checklist-card">
+                <h2>📋 Kassenwart Checkliste</h2>
+                <div id="checklistContainer">
+                    <div class="checklist-item"><input type="checkbox" onchange="saveChecklist()"><span>Kassenprüfung Vorbereitung Q1/Q2</span></div>
+                    <div class="checklist-item"><input type="checkbox" onchange="saveChecklist()"><span>Mitgliedsbeiträge / Lizenzen an Verband melden</span></div>
+                    <div class="checklist-item"><input type="checkbox" onchange="saveChecklist()"><span>Jahresabschluss für Hauptkassierer erstellen</span></div>
+                </div>
+            </div>
+
+            <div class="card" id="vereinsdatenCard">
+                <h2>⚙️ Vereinsdaten (für Spendenquittungen)</h2>
+                <div class="form-group"><label for="orgName">Vereinsname</label><input type="text" id="orgName"></div>
+                <div class="form-group"><label for="orgAddress">Anschrift</label><input type="text" id="orgAddress"></div>
+                <div class="form-group"><label for="orgFinanzamt">Zuständiges Finanzamt</label><input type="text" id="orgFinanzamt"></div>
+                <div class="form-group"><label for="orgFreistellung">Freistellungsbescheid vom</label><input type="date" id="orgFreistellung"></div>
+                <button type="button" class="btn-secondary" onclick="saveVereinsdaten()">Vereinsdaten speichern</button>
+            </div>
+
+            <div class="card">
+                <h2>📊 Sphären-Verteilung</h2>
+                <div style="max-width: 250px; margin: 0 auto;">
+                    <canvas id="sphereChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-column">
+            <div class="card">
+                <h2><span>Buchungen & Auswertung</span></h2>
+                <div class="filter-bar">
+                    <input type="text" id="tableFilter" class="table-filter" placeholder="🔍 Textsuche..." oninput="updateDashboard()">
+                    <select id="monthFilter" class="table-filter" onchange="updateDashboard()">
+                        <option value="">Alle Monate</option>
+                        <option value="01">Januar</option><option value="02">Februar</option><option value="03">März</option>
+                        <option value="04">April</option><option value="05">Mai</option><option value="06">Juni</option>
+                        <option value="07">Juli</option><option value="08">August</option><option value="09">September</option>
+                        <option value="10">Oktober</option><option value="11">November</option><option value="12">Dezember</option>
+                    </select>
+                </div>
+                <div class="table-wrapper">
+                    <table id="ledgerTable">
+                        <thead>
+                            <tr>
+                                <th>Nr.</th><th>Datum</th><th>Konto</th><th>Kategorie</th><th>Zweck</th><th class="text-right">Ein</th><th class="text-right">Aus</th><th class="text-right">Saldo (Konto)</th><th style="text-align: center;">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ledgerBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="print-only-section">
+                    <h3 style="text-align:center; border-bottom: 2px solid #333; padding-bottom: 5px;">Offizieller Kassen- & Jahresabschlussbericht</h3>
+                    <p><strong>Abteilung:</strong> Pétanque | <strong>Erstellungsdatum:</strong> <span id="printDate"></span></p>
+
+                    <div class="print-balance-box">
+                        <h4>Bestandsübersicht:</h4>
+                        <p>Endbestand Barkasse: <span id="printBar"></span></p>
+                        <p>Endbestand Bankkonto (Giro): <span id="printBank"></span></p>
+                        <p><strong>Gesamtvermögen Abteilung:</strong> <span id="printTotal"></span></p>
+                    </div>
+
+                    <div class="print-balance-box">
+                        <h4>Steuerliche Sphären-Übersicht (Einnahmen / Ausgaben Netto):</h4>
+                        <p>Ideeller Bereich (Spenden, Beiträge, Verwaltung): <span id="printIdeell"></span></p>
+                        <p>Zweckbetrieb Sport (Turniere, Lizenzen, Trainer, Platz): <span id="printZweck"></span></p>
+                        <p>Wirtschaftlicher Geschäftsbetrieb (Getränke, Speisen, Werbung): <span id="printWirtschaft"></span></p>
+                    </div>
+
+                    <div class="signature-box">
+                        <div class="sig-line">Unterschrift Kassierer</div>
+                        <div class="sig-line">1. Kassenprüfer</div>
+                        <div class="sig-line">2. Kassenprüfer</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="helpModal">
+    <div class="modal-content">
+        <div>
+            <button class="close-btn" onclick="closeHelp()">Schließen ✖</button>
+            <h2 style="margin:0; font-size:18px;">📖 Dokumentations- & Hilfe-Center Master</h2>
+        </div>
+        <input type="text" class="search-box" id="helpSearch" placeholder="Suche in der Anleitung..." oninput="searchHelp()">
+
+        <div class="modal-body" id="helpBody">
+            <div class="help-toc" id="helpToc">
+                <h3>Inhaltsverzeichnis</h3>
+                <ul>
+                    <li><a href="#h1">1. Schnellwahltasten nutzen</a></li>
+                    <li><a href="#h2">2. Jahresabschluss & Kassenbericht drucken</a></li>
+                    <li><a href="#h3">3. Automatische Backups & Monatssicherung</a></li>
+                    <li><a href="#h4">4. Zweckgebundene Mittel</a></li>
+                    <li><a href="#h5">5. Bankauszug importieren (CSV)</a></li>
+                    <li><a href="#h6">6. Buchungen festschreiben (GoBD)</a></li>
+                    <li><a href="#h7">7. Spendenquittung drucken</a></li>
+                </ul>
+            </div>
+
+            <div class="help-section" id="h1">
+                <h4>1. Schnellwahltasten nutzen</h4>
+                <p>Über die blauen Schnellwahl-Buttons oberhalb des Formulars können Sie häufige Posten (wie Startgelder oder Getränkeverkäufe) mit einem Klick in das Formular laden, um Zeit zu sparen.</p>
+            </div>
+
+            <div class="help-section" id="h2">
+                <h4>2. Jahresabschluss & Kassenbericht drucken</h4>
+                <p>Wenn Sie auf „Kassenbericht & Jahresabschluss drucken“ klicken, blendet das System alle Web-Bedienelemente aus und druckt eine saubere Bilanz inklusive Sphärenaufteilung und Unterschriftsfeldern für die Kassenprüfer aus.</p>
+            </div>
+
+            <div class="help-section" id="h3">
+                <h4>3. Automatische Backups & Monatssicherung</h4>
+                <p>Das System speichert im Hintergrund automatisch rotierende Backups sowie unlöschbare Monatssicherungen ab.</p>
+            </div>
+
+            <div class="help-section" id="h4">
+                <h4>4. Zweckgebundene Mittel</h4>
+                <p>Bei Einnahmen können Sie markieren, dass das Geld zweckgebunden ist (z. B. eine Spende für ein bestimmtes Projekt). Bei einer passenden Ausgabe markieren Sie ebenfalls die Checkbox "aus zweckgebundenen Mitteln", damit der offene zweckgebundene Betrag korrekt reduziert wird.</p>
+            </div>
+
+            <div class="help-section" id="h5">
+                <h4>5. Bankauszug importieren (CSV)</h4>
+                <p>Über „Bankauszug importieren (CSV)“ können Sie eine CSV-Datei Ihrer Bank einlesen (Spalten: Datum;Betrag;Verwendungszweck, deutsches Komma oder Punkt als Dezimaltrennzeichen). Vor der Übernahme prüfen Sie jede Zeile, wählen eine Kategorie und können Zeilen abwählen. Es wird nichts automatisch gebucht.</p>
+            </div>
+
+            <div class="help-section" id="h6">
+                <h4>6. Buchungen festschreiben (GoBD)</h4>
+                <p>„Buchungen festschreiben“ markiert alle aktuell offenen Buchungen als unveränderlich (ähnlich dem bereits gesperrten Vortrag). Das entspricht dem GoBD-Grundsatz der Unveränderbarkeit nach Abschluss eines Prüfzeitraums. Dieser Schritt kann nicht rückgängig gemacht werden — bitte vorher ein Backup erstellen. Neue Buchungen danach sind weiterhin normal bearbeitbar, bis zur nächsten Festschreibung.</p>
+            </div>
+
+            <div class="help-section" id="h7">
+                <h4>7. Spendenquittung drucken</h4>
+                <p>Tragen Sie zunächst Ihre Vereinsdaten (Name, Anschrift, Finanzamt, Freistellungsbescheid) im Bereich „Vereinsdaten“ ein. Bei Buchungen der Kategorie „Spenden ohne Werbung (Ideell)“ erscheint in der Tabelle ein Button „Quittung“, der eine druckfertige Zuwendungsbestätigung öffnet. Hinweis: Das ist eine Muster-Vorlage ohne Gewähr — bitte Format und Pflichtangaben vor Verwendung mit Steuerberater oder Finanzamt abstimmen.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="bankImportModal">
+    <div class="modal-content wide">
+        <div>
+            <button class="close-btn" onclick="closeBankImportModal()">Schließen ✖</button>
+            <h2 style="margin:0; font-size:18px;">🏦 Bankauszug-Import prüfen</h2>
+        </div>
+        <div class="modal-body" id="bankImportBody"></div>
+        <button type="button" onclick="confirmBankImport()">✅ Ausgewählte Buchungen importieren</button>
+    </div>
+</div>
+
+<script>
+    let currentBalance = 150.00;
+    let bankBalance = 0.00;
+    let nextId = 0;
+    let pendingBankImportRows = [];
+
+    let bookings = [
+        { id: 0, date: "2026-01-01", account: "bar", cat: "Vortrag", desc: "Vortrag aus dem Vorjahr", type: "ein", amount: 150.00, balance: 150.00, sphere: "Ideell", restricted: false, receipt: null, locked: true, donorName: '' },
+        { id: 1, date: "2026-04-12", account: "bar", cat: "ein_getraenke", desc: "Tageseinnahme Getränke Frühlings-Turnier", type: "ein", amount: 280.00, balance: 430.00, sphere: "Wirtschaft", restricted: false, receipt: null, locked: false, donorName: '' },
+        { id: 2, date: "2026-04-12", account: "bank", cat: "ein_turnier", desc: "Startgelder Doublette Turnier (Überweisung)", type: "ein", amount: 160.00, balance: 160.00, sphere: "Zweckbetrieb", restricted: false, receipt: null, locked: false, donorName: '' }
+    ];
+
+    const categoryMapping = {
+        "Vortrag": { name: "Vortrag", sphere: "Ideell" },
+        "ein_getraenke": { name: "Einnahme Getränke", sphere: "Wirtschaft" },
+        "ein_speisen": { name: "Einnahme Speisen", sphere: "Wirtschaft" },
+        "ein_tombola": { name: "Tombola / Feste", sphere: "Wirtschaft" },
+        "ein_turnier": { name: "Startgelder Turniere", sphere: "Zweckbetrieb" },
+        "ein_liga": { name: "Startgelder Liga", sphere: "Zweckbetrieb" },
+        "ein_sponsoring_werbung": { name: "Sponsoring (Werbung)", sphere: "Wirtschaft" },
+        "ein_sponsoring_bandenwerbung": { name: "Bandenwerbung", sphere: "Wirtschaft" },
+        "ein_sponsoring_spende": { name: "Spende (Ideell)", sphere: "Ideell" },
+        "ein_zuschuss": { name: "Zuschüsse/Beiträge", sphere: "Ideell" },
+        "aus_getraenke": { name: "Einkauf Getränke", sphere: "Wirtschaft" },
+        "aus_speisen": { name: "Einkauf Speisen", sphere: "Wirtschaft" },
+        "aus_turnier": { name: "Turnierpreise/Kosten", sphere: "Zweckbetrieb" },
+        "aus_pokale": { name: "Pokale & Preise", sphere: "Zweckbetrieb" },
+        "aus_liga_gebuehr": { name: "Startgeld Liga (ext.)", sphere: "Zweckbetrieb" },
+        "aus_trainer": { name: "Trainer-Honorare", sphere: "Zweckbetrieb" },
+        "aus_verband": { name: "Verband/Lizenzen/Schiri", sphere: "Zweckbetrieb" },
+        "aus_fahrtkosten": { name: "Fahrtkosten/Spesen", sphere: "Zweckbetrieb" },
+        "aus_reparatur": { name: "Platzwartung/Reparatur", sphere: "Zweckbetrieb" },
+        "aus_miete": { name: "Hallen-/Platzmiete", sphere: "Zweckbetrieb" },
+        "aus_inventar": { name: "Anschaffung Inventar", sphere: "Zweckbetrieb" },
+        "aus_versicherung": { name: "Versicherung & GEMA", sphere: "Ideell" },
+        "aus_verwaltung": { name: "Büro/Verwaltung", sphere: "Ideell" }
+    };
+
+    let sphereChartInstance = null;
+    document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+    document.getElementById('printDate').innerText = new Date().toLocaleDateString('de-DE');
+
+    if (localStorage.getItem('petanque_bookings_master')) {
+        try {
+            const stored = JSON.parse(localStorage.getItem('petanque_bookings_master'));
+            if (stored && stored.length > 0) {
+                bookings.length = 0;
+                stored.forEach(b => bookings.push(b));
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    if (localStorage.getItem('petanque_checklist')) {
+        document.getElementById('checklistContainer').innerHTML = localStorage.getItem('petanque_checklist');
+    }
+
+    // Stabile, fortlaufende ID-Vergabe statt Neuvergabe nach Array-Index.
+    nextId = bookings.reduce((max, b) => Math.max(max, b.id || 0), 0) + 1;
+    let totalEntryCounter = parseInt(localStorage.getItem('petanque_total_entries_counter') || '0', 10);
+    if (totalEntryCounter === 0 && bookings.length > 1) {
+        // Erststart mit vorhandenen Buchungen: Zähler initialisieren, ohne sofort ein Backup auszulösen.
+        totalEntryCounter = bookings.filter(b => !b.locked).length;
+        localStorage.setItem('petanque_total_entries_counter', String(totalEntryCounter));
+    }
+
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function quickFill(cat, desc, amount) {
+        document.getElementById('category').value = cat;
+        document.getElementById('description').value = desc;
+        document.getElementById('amount').value = amount.toFixed(2);
+        toggleFormFields();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function toggleFormFields() {
+        const cat = document.getElementById('category').value;
+        document.getElementById('beverageCalc').style.display = (cat === 'ein_getraenke' || cat === 'ein_speisen') ? 'block' : 'none';
+
+        const purposeGroup = document.getElementById('purposeGroup');
+        const purposeLabel = document.getElementById('purposeLabelText');
+        if (cat.startsWith('ein')) {
+            purposeGroup.style.display = 'block';
+            purposeLabel.innerText = 'Diese Einnahme ist zweckgebunden';
+        } else if (cat.startsWith('aus')) {
+            purposeGroup.style.display = 'block';
+            purposeLabel.innerText = 'Diese Ausgabe verwendet zweckgebundene Mittel';
+        } else {
+            purposeGroup.style.display = 'none';
+        }
+
+        document.getElementById('donorGroup').style.display = (cat === 'ein_sponsoring_spende') ? 'block' : 'none';
+    }
+
+    function calcDenominations() {
+        const v50 = (parseInt(document.getElementById('d50').value) || 0) * 50;
+        const v20 = (parseInt(document.getElementById('d20').value) || 0) * 20;
+        const v10 = (parseInt(document.getElementById('d10').value) || 0) * 10;
+        const v5 = (parseInt(document.getElementById('d5').value) || 0) * 5;
+        const v2 = (parseInt(document.getElementById('d2').value) || 0) * 2;
+        const v1 = (parseInt(document.getElementById('d1').value) || 0) * 1;
+        const v050 = (parseInt(document.getElementById('d050').value) || 0) * 0.50;
+        const v020 = (parseInt(document.getElementById('d020').value) || 0) * 0.20;
+        const v010 = (parseInt(document.getElementById('d010').value) || 0) * 0.10;
+
+        const totalCounted = v50 + v20 + v10 + v5 + v2 + v1 + v050 + v020 + v010;
+        document.getElementById('countedTotal').innerText = totalCounted.toFixed(2) + ' €';
+
+        const start = parseFloat(document.getElementById('calcStart').value) || 0;
+        const rev = totalCounted - start;
+        if (rev >= 0) {
+            document.getElementById('amount').value = rev.toFixed(2);
+            document.getElementById('description').value = "Tageseinnahme Verkaufsstand (Kassensturz)";
+        }
+    }
+
+    // Prüft, ob der Barkassenbestand bei Anwendung der übergebenen Buchungsliste
+    // (in Array-Reihenfolge, nach Datum sortiert) jemals negativ würde.
+    function wouldBarGoNegative(bookingsList) {
+        const sorted = sortBookingsForLedger(bookingsList);
+        let bal = 0;
+        for (const b of sorted) {
+            if (b.account !== 'bar') continue;
+            bal += b.type === 'ein' ? b.amount : -b.amount;
+            if (bal < -0.001) return true;
+        }
+        return false;
+    }
+
+    function sortBookingsForLedger(list) {
+        const locked = list.filter(b => b.locked);
+        const rest = list.filter(b => !b.locked).slice().sort((a, c) => {
+            if (a.date !== c.date) return a.date < c.date ? -1 : 1;
+            return (a.id || 0) - (c.id || 0);
+        });
+        return locked.concat(rest);
+    }
+
+    function updateDashboard() {
+        const ordered = sortBookingsForLedger(bookings);
+
+        let tempBarBalance = 0;
+        let tempBankBalance = 0;
+        let wirtschaftTotal = 0;
+        let zweckTotal = 0;
+        let ideellTotal = 0;
+        let restrictedReceived = 0;
+        let restrictedSpent = 0;
+        let sphereIdeell = 0, sphereZweck = 0, sphereWirtschaft = 0;
+
+        ordered.forEach(b => {
+            const amt = b.type === 'ein' ? b.amount : -b.amount;
+
+            if (b.account === 'bank') {
+                tempBankBalance += amt;
+                b.balance = tempBankBalance;
+            } else {
+                tempBarBalance += amt;
+                b.balance = tempBarBalance;
+            }
+
+            const catInfo = categoryMapping[b.cat] || { sphere: "Ideell" };
+            if (catInfo.sphere === "Wirtschaft") { wirtschaftTotal += amt; sphereWirtschaft += Math.abs(b.amount); }
+            if (catInfo.sphere === "Zweckbetrieb") { zweckTotal += amt; sphereZweck += Math.abs(b.amount); }
+            if (catInfo.sphere === "Ideell") { ideellTotal += amt; sphereIdeell += Math.abs(b.amount); }
+
+            if (b.type === 'ein' && b.restricted) restrictedReceived += b.amount;
+            if (b.type === 'aus' && b.restricted) restrictedSpent += b.amount;
+        });
+
+        currentBalance = tempBarBalance;
+        bankBalance = tempBankBalance;
+
+        try {
+            localStorage.setItem('petanque_bookings_master', JSON.stringify(bookings));
+        } catch (e) {
+            console.error('Speichern fehlgeschlagen (Speicher evtl. voll):', e);
+            alert('Warnung: Die Buchungen konnten nicht im Browser-Speicher gesichert werden (Speicherplatz evtl. voll). Bitte zeitnah ein CSV-/Backup-Export durchführen.');
+        }
+
+        document.getElementById('totalBalance').innerText = currentBalance.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+        document.getElementById('bankBalance').innerText = bankBalance.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+        document.getElementById('wirtschaftNetto').innerText = wirtschaftTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+        document.getElementById('restrictedOpen').innerText = Math.max(0, restrictedReceived - restrictedSpent).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+
+        document.getElementById('printBar').innerText = currentBalance.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+        document.getElementById('printBank').innerText = bankBalance.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+        document.getElementById('printTotal').innerText = (currentBalance + bankBalance).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+        document.getElementById('printIdeell').innerText = ideellTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+        document.getElementById('printZweck').innerText = zweckTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+        document.getElementById('printWirtschaft').innerText = wirtschaftTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+
+        const filterText = document.getElementById('tableFilter').value.toLowerCase();
+        const monthVal = document.getElementById('monthFilter').value;
+        const tbody = document.getElementById('ledgerBody');
+        tbody.innerHTML = "";
+
+        ordered.forEach(b => {
+            const catInfo = categoryMapping[b.cat] || { name: b.cat, sphere: "Ideell" };
+            const rowString = `${b.id} ${b.date} ${catInfo.name} ${b.desc} ${b.amount}`.toLowerCase();
+            if (filterText && !rowString.includes(filterText)) return;
+            if (monthVal && !b.date.substring(5, 7).includes(monthVal)) return;
+
+            const row = document.createElement('tr');
+            let badgeClass = "badge-ideell";
+            if (catInfo.sphere === "Wirtschaft") badgeClass = "badge-wirtschaft";
+            if (catInfo.sphere === "Zweckbetrieb") badgeClass = "badge-zweck";
+
+            let actionHtml = '';
+            if (!b.locked) {
+                actionHtml += `<button class="btn-action btn-edit" onclick="editBooking(${b.id})">Bearbeiten</button>` +
+                              `<button class="btn-action btn-delete" onclick="deleteBooking(${b.id})">Löschen</button>`;
+            } else if (b.cat === 'Vortrag') {
+                actionHtml += `<span style="color:#aaa; font-size:10px;">Vortrag</span>`;
+            } else {
+                actionHtml += `<span style="color:#aaa; font-size:10px;">🔒 Festgeschrieben</span>`;
+            }
+            if (b.cat === 'ein_sponsoring_spende') {
+                actionHtml += `<button class="btn-action btn-receipt" onclick="printDonationReceipt(${b.id})">Quittung</button>`;
+            }
+
+            const receiptHtml = b.receipt ? `<a href="${escapeHtml(b.receipt)}" target="_blank" title="Beleg ansehen">📎</a>` : '';
+
+            row.innerHTML = `
+                <td>${b.id}</td>
+                <td>${b.date.split('-').reverse().join('.')}</td>
+                <td><span style="font-size:10px; font-weight:bold; color:${b.account === 'bank' ? '#2563eb' : '#059669'}">${b.account === 'bank' ? '🏦 Bank' : '💵 Bar'}</span></td>
+                <td><span class="badge ${badgeClass}">${escapeHtml(catInfo.name)}</span></td>
+                <td>${escapeHtml(b.desc)} ${receiptHtml}${b.restricted ? '<span class="tag-zb">Zweckgebunden</span>' : ''}</td>
+                <td class="text-right">${b.type === 'ein' ? b.amount.toFixed(2) + ' €' : '-'}</td>
+                <td class="text-right">${b.type === 'aus' ? b.amount.toFixed(2) + ' €' : '-'}</td>
+                <td class="text-right" style="font-weight:bold;">${b.balance.toFixed(2)} €</td>
+                <td style="text-align: center;">${actionHtml}</td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        updateChart(sphereIdeell, sphereZweck, sphereWirtschaft);
+    }
+
+    function updateChart(ideell, zweck, wirtschaft) {
+        const ctx = document.getElementById('sphereChart').getContext('2d');
+        if (sphereChartInstance) { sphereChartInstance.destroy(); }
+        sphereChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Ideell', 'Zweckbetrieb', 'Wirtschaft'],
+                datasets: [{
+                    data: [ideell, zweck, wirtschaft],
+                    backgroundColor: ['#0369a1', '#1d4ed8', '#b45309']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+    }
+
+    function checkAndTriggerAutoBackup() {
+        if (totalEntryCounter > 0 && totalEntryCounter % 5 === 0) {
+            let autoBackups = JSON.parse(localStorage.getItem('petanque_auto_backups_list_master') || '[]');
+
+            const backupObj = {
+                date: new Date().toISOString(),
+                filename: `petanque_auto_backup_${new Date().toISOString().substring(0, 10)}_${totalEntryCounter}b.json`,
+                data: bookings
+            };
+
+            autoBackups.push(backupObj);
+            if (autoBackups.length > 5) autoBackups.shift();
+            try {
+                localStorage.setItem('petanque_auto_backups_list_master', JSON.stringify(autoBackups));
+            } catch (e) {
+                console.error('Auto-Backup-Liste konnte nicht gespeichert werden:', e);
+            }
+            triggerDownload(backupObj.data, backupObj.filename);
+
+            const now = new Date();
+            const currentMonthYearKey = `petanque_monthly_master_${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`;
+            if (!localStorage.getItem(currentMonthYearKey)) {
+                try {
+                    localStorage.setItem(currentMonthYearKey, JSON.stringify(bookings));
+                } catch (e) {
+                    console.error('Monatssicherung konnte nicht gespeichert werden:', e);
+                }
+                const monthName = String(now.getMonth() + 1).padStart(2, '0');
+                setTimeout(() => {
+                    triggerDownload(bookings, `petanque_monatssicherung_${monthName}_${now.getFullYear()}.json`);
+                }, 400);
+            }
+
+            const alertBox = document.getElementById('backupAlert');
+            alertBox.style.display = 'block';
+            setTimeout(() => { alertBox.style.display = 'none'; }, 6000);
+        }
+    }
+
+    function triggerDownload(dataArray, filename) {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataArray, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", filename);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    function handleFormSubmit(e) {
+        e.preventDefault();
+        document.getElementById('errorAlert').style.display = 'none';
+        document.getElementById('validationAlert').style.display = 'none';
+
+        const editId = document.getElementById('editId').value;
+        const account = document.getElementById('accountType').value;
+        const date = document.getElementById('date').value;
+        const cat = document.getElementById('category').value;
+        const desc = document.getElementById('description').value.trim();
+        const amount = parseFloat(document.getElementById('amount').value);
+        const isRestricted = document.getElementById('isRestricted').checked;
+        const donorName = document.getElementById('donorName').value.trim();
+        const type = cat.startsWith('ein') ? 'ein' : 'aus';
+
+        if (!desc || isNaN(amount) || amount <= 0) {
+            document.getElementById('validationAlert').style.display = 'block';
+            return;
+        }
+
+        const fileInput = document.getElementById('receiptFile');
+
+        if (fileInput.files && fileInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function (uploadEvent) {
+                processBookingSave(editId, account, date, cat, desc, amount, isRestricted, type, uploadEvent.target.result, donorName);
+            };
+            reader.onerror = function () {
+                alert('Beleg konnte nicht gelesen werden. Buchung wird ohne Beleg gespeichert.');
+                processBookingSave(editId, account, date, cat, desc, amount, isRestricted, type, null, donorName);
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            let receiptData = null;
+            if (editId !== "") {
+                const existing = bookings.find(b => b.id === parseInt(editId));
+                if (existing) receiptData = existing.receipt;
+            }
+            processBookingSave(editId, account, date, cat, desc, amount, isRestricted, type, receiptData, donorName);
+        }
+    }
+
+    function processBookingSave(editId, account, date, cat, desc, amount, isRestricted, type, receiptData, donorName) {
+        const isNew = (editId === "");
+
+        if (isNew) {
+            const candidate = {
+                id: nextId, date: date, account: account, cat: cat, desc: desc, type: type,
+                amount: amount, balance: 0, sphere: categoryMapping[cat].sphere, restricted: isRestricted,
+                receipt: receiptData, locked: false, donorName: donorName || ''
+            };
+            const simulated = bookings.concat([candidate]);
+            if (account === 'bar' && wouldBarGoNegative(simulated)) {
+                document.getElementById('errorAlert').style.display = 'block';
+                return;
+            }
+            bookings.push(candidate);
+            nextId++;
+        } else {
+            const idNum = parseInt(editId);
+            const targetIndex = bookings.findIndex(b => b.id === idNum);
+            if (targetIndex === -1) return;
+            const original = bookings[targetIndex];
+            if (original.locked) { cancelEdit(); return; }
+
+            const updated = Object.assign({}, original, {
+                date: date, account: account, cat: cat, desc: desc, type: type,
+                amount: amount, sphere: categoryMapping[cat].sphere, restricted: isRestricted,
+                receipt: receiptData || original.receipt, donorName: donorName || ''
+            });
+
+            const simulated = bookings.slice();
+            simulated[targetIndex] = updated;
+            if (wouldBarGoNegative(simulated)) {
+                document.getElementById('errorAlert').style.display = 'block';
+                return;
+            }
+            bookings[targetIndex] = updated;
+            cancelEdit();
+        }
+
+        document.getElementById('bookingForm').reset();
+        document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+        updateDashboard();
+
+        if (isNew) {
+            totalEntryCounter++;
+            localStorage.setItem('petanque_total_entries_counter', String(totalEntryCounter));
+            checkAndTriggerAutoBackup();
+        }
+    }
+
+    function editBooking(id) {
+        const b = bookings.find(item => item.id === id);
+        if (!b || b.locked) return;
+
+        document.getElementById('editId').value = b.id;
+        document.getElementById('accountType').value = b.account || 'bar';
+        document.getElementById('date').value = b.date;
+        document.getElementById('category').value = b.cat;
+        document.getElementById('description').value = b.desc;
+        document.getElementById('amount').value = b.amount;
+        document.getElementById('isRestricted').checked = b.restricted;
+        document.getElementById('donorName').value = b.donorName || '';
+
+        toggleFormFields();
+        document.getElementById('formTitle').innerText = "Buchung bearbeiten (ID: " + id + ")";
+        document.getElementById('submitBtn').innerText = "Änderungen speichern";
+        document.getElementById('cancelEditBtn').style.display = "block";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+        document.getElementById('editId').value = "";
+        document.getElementById('bookingForm').reset();
+        document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+        document.getElementById('formTitle').innerText = "Buchung erfassen";
+        document.getElementById('submitBtn').innerText = "Speichern";
+        document.getElementById('cancelEditBtn').style.display = "none";
+        document.getElementById('beverageCalc').style.display = 'none';
+        document.getElementById('purposeGroup').style.display = 'none';
+        document.getElementById('donorGroup').style.display = 'none';
+        document.getElementById('errorAlert').style.display = 'none';
+        document.getElementById('validationAlert').style.display = 'none';
+    }
+
+    function deleteBooking(id) {
+        const b = bookings.find(item => item.id === id);
+        if (!b || b.locked) return;
+        if (confirm("Möchten Sie diesen Eintrag wirklich löschen?")) {
+            bookings = bookings.filter(item => item.id !== id);
+            updateDashboard();
+        }
+    }
+
+    function saveChecklist() {
+        localStorage.setItem('petanque_checklist', document.getElementById('checklistContainer').innerHTML);
+    }
+
+    function exportToCSV() {
+        let csv = "Lfd Nr;Datum;Konto;Kategorie;Sphere;Buchungstext;Einnahme;Ausgabe;Saldo\r\n";
+        const ordered = sortBookingsForLedger(bookings);
+        const esc = (s) => `"${String(s).replace(/"/g, '""')}"`;
+        const euro = (n) => n.toFixed(2).replace('.', ',');
+        ordered.forEach(b => {
+            const catInfo = categoryMapping[b.cat] || { name: "Vortrag", sphere: "Ideell" };
+            csv += `${b.id};${b.date};${b.account};${esc(catInfo.name)};${catInfo.sphere};${esc(b.desc)};${b.type === 'ein' ? euro(b.amount) : '0,00'};${b.type === 'aus' ? euro(b.amount) : '0,00'};${euro(b.balance)}\r\n`;
+        });
+        const blob = new Blob(["﻿" + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute("download", "kassenbuch_petanque_master.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function isValidBookingRecord(item) {
+        return item && typeof item === 'object'
+            && typeof item.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.date)
+            && typeof item.desc === 'string'
+            && (item.type === 'ein' || item.type === 'aus')
+            && typeof item.amount === 'number' && !isNaN(item.amount)
+            && (item.account === 'bar' || item.account === 'bank');
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                const content = e.target.result;
+                const parsed = JSON.parse(content);
+                if (!Array.isArray(parsed) || parsed.length === 0) {
+                    alert("Bitte wählen Sie eine gültige Backup-Datei (JSON-Array).");
+                    return;
+                }
+                const invalidCount = parsed.filter(item => !isValidBookingRecord(item)).length;
+                if (invalidCount > 0) {
+                    alert(`Die Datei enthält ${invalidCount} ungültige(n) Eintrag/Einträge. Import wurde abgebrochen.`);
+                    return;
+                }
+                bookings.length = 0;
+                parsed.forEach((item, idx) => {
+                    if (typeof item.id !== 'number') item.id = idx;
+                    if (typeof item.locked !== 'boolean') item.locked = (item.cat === 'Vortrag');
+                    if (typeof item.restricted !== 'boolean') item.restricted = false;
+                    if (typeof item.donorName !== 'string') item.donorName = '';
+                    bookings.push(item);
+                });
+                nextId = bookings.reduce((max, b) => Math.max(max, b.id || 0), 0) + 1;
+                updateDashboard();
+                alert("Backup bzw. Monatssicherung erfolgreich eingespielt!");
+            } catch (err) {
+                alert("Fehler beim Einlesen: " + err);
+            } finally {
+                event.target.value = '';
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // ---- Bankauszug-Import (CSV) ----
+
+    function parseGermanOrIsoDate(s) {
+        s = (s || '').trim();
+        let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (m) return s;
+        m = s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})$/);
+        if (m) {
+            let [, d, mo, y] = m;
+            if (y.length === 2) y = (parseInt(y, 10) > 70 ? '19' : '20') + y;
+            return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+        }
+        return null;
+    }
+
+    function parseGermanAmount(s) {
+        s = (s || '').trim().replace(/[€\s]/g, '');
+        if (s === '') return NaN;
+        // Deutsches Format: Tausenderpunkt, Komma als Dezimaltrennzeichen
+        if (/,\d{1,2}$/.test(s)) {
+            s = s.replace(/\./g, '').replace(',', '.');
+        }
+        return parseFloat(s);
+    }
+
+    function parseBankCSV(text) {
+        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (lines.length === 0) return [];
+        const delim = lines[0].includes(';') ? ';' : (lines[0].includes('\t') ? '\t' : ',');
+        const rows = lines.map(l => l.split(delim));
+
+        let startIdx = 0;
+        if (rows.length > 0 && !parseGermanOrIsoDate(rows[0][0])) {
+            startIdx = 1; // Kopfzeile überspringen
+        }
+
+        const result = [];
+        for (let i = startIdx; i < rows.length; i++) {
+            const r = rows[i];
+            if (r.length < 2) continue;
+            const isoDate = parseGermanOrIsoDate(r[0]);
+            const amount = parseGermanAmount(r[1]);
+            const desc = (r.slice(2).join(' ') || '').trim();
+            if (!isoDate || isNaN(amount)) continue;
+            result.push({ date: isoDate, amount: amount, desc: desc || 'Bankbuchung (Import)' });
+        }
+        return result;
+    }
+
+    function handleBankCSV(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const rows = parseBankCSV(e.target.result);
+            if (rows.length === 0) {
+                alert('Es konnten keine gültigen Zeilen gelesen werden. Erwartetes Format je Zeile: Datum;Betrag;Verwendungszweck (z. B. 12.04.2026;150,00;Spende Mustermann)');
+                return;
+            }
+            pendingBankImportRows = rows.map((r, idx) => Object.assign({ _idx: idx, _include: true, _cat: '' }, r));
+            renderBankImportReview();
+            document.getElementById('bankImportModal').style.display = 'block';
+        };
+        reader.onerror = function () {
+            alert('Datei konnte nicht gelesen werden.');
+        };
+        reader.readAsText(file, 'UTF-8');
+        event.target.value = '';
+    }
+
+    function categoryOptionsHtml(selected) {
+        let html = '<option value="">-- Kategorie wählen --</option>';
+        for (const key in categoryMapping) {
+            if (key === 'Vortrag') continue;
+            html += `<option value="${key}" ${key === selected ? 'selected' : ''}>${escapeHtml(categoryMapping[key].name)} (${categoryMapping[key].sphere})</option>`;
+        }
+        return html;
+    }
+
+    function renderBankImportReview() {
+        const body = document.getElementById('bankImportBody');
+        let html = '<p style="font-size:12px;color:#6b7280;">Bitte für jede zu importierende Zeile eine Kategorie wählen. Beträge: positiv = Einnahme, negativ = Ausgabe (Konto: Bank). Nicht benötigte Zeilen können abgewählt werden.</p>';
+        html += '<div class="table-wrapper"><table><thead><tr><th></th><th>Datum</th><th class="text-right">Betrag</th><th>Zweck</th><th>Kategorie</th></tr></thead><tbody>';
+        pendingBankImportRows.forEach(r => {
+            html += `<tr>
+                <td><input type="checkbox" ${r._include ? 'checked' : ''} onchange="pendingBankImportRows[${r._idx}]._include=this.checked"></td>
+                <td>${r.date.split('-').reverse().join('.')}</td>
+                <td class="text-right">${r.amount.toFixed(2).replace('.', ',')} €</td>
+                <td><input type="text" value="${escapeHtml(r.desc)}" style="font-size:11px;padding:3px;" oninput="pendingBankImportRows[${r._idx}].desc=this.value"></td>
+                <td><select style="font-size:11px;padding:3px;" onchange="pendingBankImportRows[${r._idx}]._cat=this.value">${categoryOptionsHtml(r._cat)}</select></td>
+            </tr>`;
+        });
+        html += '</tbody></table></div>';
+        body.innerHTML = html;
+    }
+
+    function closeBankImportModal() {
+        document.getElementById('bankImportModal').style.display = 'none';
+        pendingBankImportRows = [];
+    }
+
+    function confirmBankImport() {
+        const toImport = pendingBankImportRows.filter(r => r._include);
+        if (toImport.length === 0) { alert('Keine Zeilen ausgewählt.'); return; }
+        const missingCat = toImport.filter(r => !r._cat);
+        if (missingCat.length > 0) {
+            alert(`Bitte für alle ausgewählten Zeilen eine Kategorie wählen (${missingCat.length} fehlen noch).`);
+            return;
+        }
+
+        let imported = 0;
+        toImport.forEach(r => {
+            const catIsEin = r._cat.startsWith('ein');
+            const finalType = catIsEin ? 'ein' : 'aus';
+            bookings.push({
+                id: nextId, date: r.date, account: 'bank', cat: r._cat, desc: r.desc || 'Bankbuchung (Import)',
+                type: finalType, amount: Math.abs(r.amount), balance: 0,
+                sphere: categoryMapping[r._cat].sphere, restricted: false, receipt: null, locked: false, donorName: ''
+            });
+            nextId++;
+            imported++;
+        });
+
+        pendingBankImportRows = [];
+        closeBankImportModal();
+        updateDashboard();
+        alert(`${imported} Buchung(en) aus dem Bankauszug importiert.`);
+    }
+
+    // ---- Festschreibung (GoBD) ----
+
+    function lockAllBookings() {
+        const unlockedCount = bookings.filter(b => !b.locked).length;
+        if (unlockedCount === 0) {
+            alert('Es gibt keine offenen Buchungen zum Festschreiben.');
+            return;
+        }
+        if (!confirm(`${unlockedCount} Buchung(en) werden unveränderlich festgeschrieben und können danach nicht mehr bearbeitet oder gelöscht werden. Dies lässt sich nicht rückgängig machen. Vorher ein Backup erstellen? Fortfahren?`)) return;
+
+        bookings.forEach(b => { if (!b.locked) b.locked = true; });
+        localStorage.setItem('petanque_lock_date', new Date().toISOString());
+        updateDashboard();
+        updateLockInfo();
+        alert('Alle bisherigen Buchungen wurden festgeschrieben. Neue Buchungen bleiben bis zur nächsten Festschreibung bearbeitbar.');
+    }
+
+    function updateLockInfo() {
+        const el = document.getElementById('lockInfo');
+        const lastLock = localStorage.getItem('petanque_lock_date');
+        el.innerText = lastLock
+            ? 'Letzte Festschreibung: ' + new Date(lastLock).toLocaleString('de-DE')
+            : 'Noch keine Festschreibung durchgeführt.';
+    }
+
+    // ---- Vereinsdaten & Spendenquittung ----
+
+    function loadVereinsdaten() {
+        const data = JSON.parse(localStorage.getItem('petanque_vereinsdaten') || '{}');
+        document.getElementById('orgName').value = data.name || '';
+        document.getElementById('orgAddress').value = data.address || '';
+        document.getElementById('orgFinanzamt').value = data.finanzamt || '';
+        document.getElementById('orgFreistellung').value = data.freistellung || '';
+    }
+
+    function saveVereinsdaten() {
+        const data = {
+            name: document.getElementById('orgName').value.trim(),
+            address: document.getElementById('orgAddress').value.trim(),
+            finanzamt: document.getElementById('orgFinanzamt').value.trim(),
+            freistellung: document.getElementById('orgFreistellung').value
+        };
+        localStorage.setItem('petanque_vereinsdaten', JSON.stringify(data));
+        alert('Vereinsdaten gespeichert.');
+    }
+
+    function printDonationReceipt(id) {
+        const b = bookings.find(item => item.id === id);
+        if (!b) return;
+        const org = JSON.parse(localStorage.getItem('petanque_vereinsdaten') || '{}');
+        if (!org.name) {
+            alert('Bitte zuerst die Vereinsdaten (mindestens Vereinsname und Anschrift) im Bereich "Vereinsdaten" eintragen und speichern.');
+            return;
+        }
+        const w = window.open('', '_blank', 'width=700,height=900');
+        if (!w) {
+            alert('Pop-up wurde vom Browser blockiert. Bitte Pop-ups für diese Seite erlauben und erneut versuchen.');
+            return;
+        }
+        const amountStr = b.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+        const dateStr = b.date.split('-').reverse().join('.');
+        const freistellungStr = org.freistellung ? new Date(org.freistellung).toLocaleDateString('de-DE') : '[Datum eintragen]';
+        const donor = b.donorName ? escapeHtml(b.donorName) : '[Name und Anschrift des Zuwendenden eintragen]';
+
+        const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>Zuwendungsbestätigung</title>
+        <style>
+            body{font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;padding:30px;max-width:700px;margin:0 auto;color:#111;}
+            h2{text-align:center;font-size:16px;}
+            .box{border:1px solid #333;padding:15px;margin:15px 0;}
+            .sig{margin-top:60px;}
+            .sig div{border-top:1px solid #333;width:250px;text-align:center;padding-top:5px;}
+            .disclaimer{font-size:10px;color:#888;margin-top:30px;border-top:1px dashed #ccc;padding-top:10px;}
+        </style></head><body>
+        <p><strong>${escapeHtml(org.name)}</strong><br>${escapeHtml(org.address || '')}</p>
+        <h2>Bestätigung über Geldzuwendungen<br>im Sinne des § 10b des Einkommensteuergesetzes</h2>
+        <p>Name und Anschrift des Zuwendenden:<br><strong>${donor}</strong></p>
+        <div class="box">
+            <p>Betrag der Zuwendung: <strong>${amountStr}</strong></p>
+            <p>Tag der Zuwendung: <strong>${dateStr}</strong></p>
+            <p>Es handelt sich um den Verzicht auf Erstattung von Aufwendungen: ☐ Ja &nbsp;&nbsp; ☑ Nein</p>
+        </div>
+        <p>Wir sind wegen Förderung des Sports nach dem Freistellungsbescheid des Finanzamts ${escapeHtml(org.finanzamt || '[Finanzamt eintragen]')} vom ${freistellungStr} nach § 5 Abs. 1 Nr. 9 des Körperschaftsteuergesetzes von der Körperschaftsteuer befreit.</p>
+        <p>Es wird bestätigt, dass die Zuwendung nur zur Förderung der oben angegebenen Zwecke verwendet wird.</p>
+        <div class="sig"><div>Ort, Datum, Unterschrift</div></div>
+        <p class="disclaimer">Muster-Vorlage, keine Rechts- oder Steuerberatung. Bitte Format und Pflichtangaben vor Verwendung mit Steuerberater bzw. Finanzamt abstimmen (amtliches Muster beachten).</p>
+        <script>window.onload=function(){window.print();};<\/script>
+        </body></html>`;
+
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+    }
+
+    function openHelp() { document.getElementById('helpModal').style.display = 'block'; }
+    function closeHelp() { document.getElementById('helpModal').style.display = 'none'; }
+
+    function searchHelp() {
+        const query = document.getElementById('helpSearch').value.toLowerCase();
+        const sections = document.querySelectorAll('.help-section');
+        sections.forEach(sec => {
+            const text = sec.innerText.toLowerCase();
+            sec.style.display = text.includes(query) ? 'block' : 'none';
+        });
+        document.getElementById('helpToc').style.display = query === "" ? "block" : "none";
+    }
+
+    loadVereinsdaten();
+    updateLockInfo();
+    updateDashboard();
+</script>
+</body>
+</html>
